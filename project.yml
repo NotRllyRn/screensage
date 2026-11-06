@@ -1,0 +1,33 @@
+name: ScreenSage
+options:
+  deploymentTarget:
+    iOS: '27.0'
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    TARGETED_DEVICE_FAMILY: '1,2'
+    CODE_SIGNING_ALLOWED: NO
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
+targets:
+  ScreenSage:
+    type: application
+    platform: iOS
+    sources: [ScreenSage]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.notrllyrn.screensage
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ScreenSage/Info.plist
+    scheme:
+      testTargets: [ScreenSageTests]
+  ScreenSageTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: ScreenSage
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.notrllyrn.screensage.tests
+        GENERATE_INFOPLIST_FILE: YES
