@@ -1,3 +1,14 @@
+# Version 0.1.1 verification
+
+Verified 2026-11-06 on the authorized Mac with Xcode 27.2 / iPhoneOS 27.2.
+
+- Native arm64 Release build passed; app version 0.1.1, build 2.
+- All 12 iPhone simulator XCTest tests passed. New coverage includes bytewise UTF-8/CRLF SSE framing, multiline event data, failure/incomplete events, premature EOF, stream size bounds, and redacted HTTP error details.
+- Responses requests now send `stream: true`, retain `store: false`, and omit `max_output_tokens`. Feedback is accepted only after `response.completed`.
+- IPA payload, native source hashes and SHA-256 verified before publishing.
+- Tests use synthetic streaming events. No authenticated request to the user's Codex Broker was made; this release is ready for that integration test. Neither Codex Broker nor the companion was modified.
+- Physical capture/provisioning limitations below still apply. No new physical-device verification is claimed.
+
 # First demo verification
 
 Release: `v0.1.0` (unsigned, requires signing). Verification performed 2026-11-06.
