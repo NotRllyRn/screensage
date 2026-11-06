@@ -1,3 +1,12 @@
+# Version 0.1.2 verification
+
+- Fixes a reproduced parser defect: text arriving in deltas or item-done events was ignored when the completion summary omitted the answer. Synthetic regression cases cover vision-test, contact-sheet and Ask-style answers, done-event deduplication, multiple parts, commentary filtering and broker notice removal. An incomplete/failed stream still cannot produce feedback.
+- 19 native unit tests passed, including diagnostics persistence, bounded retention, text-file export and omission of sensitive error descriptions/URLs.
+- One simulator UI test passed: open the top-left Diagnostics button, prepare the report, and confirm the share-file action and success state appear.
+- Native arm64 Release build uses Xcode 27.2 / iPhoneOS 27.2; version 0.1.2, build 3. IPA and source hashes are checked before publication.
+- Operational logging covers capture, frame sampling, analysis, provider status and stream structure, numeric errors, cancellation, Keychain outcomes, notification status, companion actions and app lifecycle. Raw provider bodies/answers and credentials are never logged.
+- No authenticated replay of the user's failing broker request was available. The fixed parser defect matches the reported symptom; the new diagnostic export is intended to confirm any remaining runtime incompatibility. Codex Broker was not modified.
+
 # Version 0.1.1 verification
 
 Verified 2026-11-06 on the authorized Mac with Xcode 27.2 / iPhoneOS 27.2.
