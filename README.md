@@ -2,7 +2,7 @@
 
 A native iPhone/iPad screen-context assistant for iOS/iPadOS 27. Explicitly start full-screen sharing, work in another app, and ask your chosen vision model about recent activity.
 
-**First demo:** [v0.1.0](https://github.com/NotRllyRn/screensage/releases/tag/v0.1.0), built and unit-tested. Physical background capture, SideStore provisioning and authenticated provider responses are still unverified.
+**Current demo:** [v0.1.1](https://github.com/NotRllyRn/screensage/releases/tag/v0.1.1), built and unit-tested. Physical background capture, SideStore provisioning and authenticated provider responses are still unverified.
 
 ## What it does
 
@@ -19,7 +19,7 @@ This observes and advises; it does not control apps or promise perfect understan
 
 **Codex · ChatGPT sign-in:** run the small [Codex companion](companion/README.md) on your own computer/server, reachable over HTTPS. Enter its URL and connection key in the app, tap Continue with ChatGPT, complete OpenAI's device-code sign-in, then check account/models. The companion runs official Codex app-server with images and temporary threads; ScreenSage shows the answers and thread IDs. It does not reuse coding-agent tokens or treat a subscription as an API key. Each analysis uses a fresh ephemeral thread plus bounded recent text context, not an ever-growing saved Codex conversation.
 
-**Custom provider:** enter your OpenAI-compatible HTTPS base URL (including `/v1` if required), provider API key and vision model. Select Chat Completions or Responses. These direct calls use non-streaming responses; a streaming-only proxy needs adaptation. Plain HTTP and automatic redirects are intentionally unsupported in this demo. No provider URL or key is bundled.
+**Custom provider:** enter your OpenAI-compatible HTTPS base URL (including `/v1` if required), provider API key and vision model. Select Chat Completions or Responses. Responses uses streaming SSE (`stream: true`, `store: false`) without `max_output_tokens`, for Codex Broker compatibility. It waits for `response.completed` before displaying feedback. Chat Completions continues to use non-streaming JSON. Plain HTTP and automatic redirects are intentionally unsupported in this demo. No provider URL or key is bundled.
 
 Tap **Context: Default** to edit the default monitoring instructions or create named presets such as Studying. Describe what you are doing, what to watch for, when to interrupt, and the correction you want. Alert notifications show a short reason; tapping opens evidence, explanation and suggested action. Excerpts can reveal task details on the lock screen; iOS notification-preview settings control visibility.
 

@@ -51,7 +51,7 @@ enum Provider {
         if connection.wire == .chat {
             return ["model": connection.model, "messages": [["role": "user", "content": [["type": "text", "text": prompt], ["type": "image_url", "image_url": ["url": uri]]]]], "max_tokens": 600, "stream": false]
         }
-        return ["model": connection.model, "input": [["role": "user", "content": [["type": "input_text", "text": prompt], ["type": "input_image", "image_url": uri]]]], "store": false, "stream": false, "max_output_tokens": 600]
+        return ["model": connection.model, "input": [["role": "user", "content": [["type": "input_text", "text": prompt], ["type": "input_image", "image_url": uri]]]], "store": false, "stream": true]
     }
     static func analyze(connection: Connection, prompt: String, image: Data) async throws -> String {
         try connection.validate()
@@ -65,7 +65,27 @@ enum Provider {
         defer { session.invalidateAndCancel() }
         let (bytes, response) = try await session.bytes(for: request)
         guard let http = response as? HTTPURLResponse else { throw AppError.message("Invalid provider response.") }
-        guard (200..<300).contains(http.statusCode) else { throw AppError.message("Provider HTTP \(http.statusCode). Check authorization, model, quota and endpoint. No automatic retry.") }
+        guard (200..<300).contains(http.statusCode) else {
+            var detail = Data()
+            for try await byte in bytes {
+                try Task.checkCancellation()
+                if detail.count >= 16_384 { break }
+                detail.append(byte)
+            }
+            throw httpError(status: http.statusCode, data: detail, key: connection.key)
+        }
+        if connection.kind == .custom && connection.wire == .responses {
+            guard http.value(forHTTPHeaderField: "Content-Type")?.lowercased().contains("text/event-stream") == true else {
+                throw AppError.message("Expected a streaming Responses reply (text/event-stream). Check the provider API format.")
+            }
+            var stream = ResponseStream()
+            for try await byte in bytes {
+                try Task.checkCancellation()
+                try stream.append(byte)
+                if stream.completed != nil { break }
+            }
+            return try parse(stream.finish(), connection: connection)
+        }
         var data = Data()
         for try await byte in bytes {
             try Task.checkCancellation()
@@ -73,6 +93,13 @@ enum Provider {
             data.append(byte)
         }
         return try parse(data, connection: connection)
+    }
+    static func httpError(status: Int, data: Data, key: String) -> AppError {
+        let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        let error = json?["error"] as? [String: Any]
+        var message = error?["message"] as? String ?? json?["detail"] as? String ?? "Check authorization, model, quota and endpoint."
+        if !key.isEmpty { message = message.replacingOccurrences(of: key, with: "[redacted]") }
+        return .message("Provider HTTP \(status): \(String(message.prefix(400))) No automatic retry.")
     }
     static func parse(_ data: Data, connection: Connection) throws -> String {
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]

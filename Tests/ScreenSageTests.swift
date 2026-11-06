@@ -50,6 +50,8 @@ final class ScreenSageTests: XCTestCase {
         let responses = Provider.body(connection: c, prompt: "goal", image: image)
         XCTAssertEqual(responses["store"] as? Bool, false)
         XCTAssertNotNil(responses["input"])
+        XCTAssertEqual(responses["stream"] as? Bool, true)
+        XCTAssertNil(responses["max_output_tokens"])
         c.kind = .chatGPT
         let bridge = Provider.body(connection: c, prompt: "goal", image: image)
         XCTAssertEqual(bridge["image"] as? String, "data:image/jpeg;base64,AQID")
