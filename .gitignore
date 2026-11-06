@@ -9,3 +9,5 @@ DerivedData/
 .local/
 __pycache__/
 .venv/
+
+*.log

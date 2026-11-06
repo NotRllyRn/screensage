@@ -1,40 +1,52 @@
 # ScreenSage
 
-A proposed iPhone and iPad screen-aware assistant: start an explicitly approved screen-capture session, work in another app, and receive contextual AI feedback or ask about your recent activity.
+A native iPhone/iPad screen-context assistant for iOS/iPadOS 27. Explicitly start full-screen sharing, work in another app, and ask your chosen vision model about recent activity.
 
-**Status:** project brief and repository initialized. The first demo is not implemented or released yet. This README describes the requested behavior, not completed features.
+**First demo:** implemented; release verification is being completed. Physical background capture, SideStore provisioning and authenticated provider responses are still unverified.
 
-## First demo
+## What it does
 
-- Native SwiftUI app for iPhone and iPad, initially targeting iOS/iPadOS 27.
-- User-started full-display capture that continues while another app is foregrounded.
-- Approximately one frame every ten seconds; six timestamped images form a contact sheet for analysis about once per minute.
-- A user-specified task or goal, bounded recent context, a readable activity/feedback history, and an Ask action using recent screen context.
-- Relevant notifications for potential mistakes; clear start, pause, stop, and capture/upload status.
-- Two connection choices: supported Codex/ChatGPT sign-in, and a custom OpenAI-compatible provider/proxy configured with URL, key, and vision-model identifier.
-- A downloadable unsigned IPA on GitHub Releases for SideStore testing, with a checksum and installation instructions. Automated build artifacts should also be available.
+- System-approved ScreenCaptureKit full-display capture with the `screen-capture` background mode.
+- Processes at most one available frame every ten seconds; six timestamped images form a 1440×3000 contact sheet. Actual frame delivery is not an exact timer.
+- Named, editable monitoring contexts (default plus custom profiles such as Studying), a task/goal, on-demand Ask after the first frame, and up to 20 feedback entries. The latest four short answers provide bounded recent context.
+- One inference request at a time. Busy automatic batches are skipped, never queued indefinitely.
+- Explicit upload consent, capture/upload status, Start/Pause/Stop, and optional short-excerpt notifications for possible mistakes with a two-minute cooldown.
+- Credentials and connection settings in Keychain; screen images stay in memory. Pause ends capture and clears images. Stop also clears feedback and cancels requests. Content already received by a provider cannot be recalled.
 
-The app observes and advises. It does not control other apps, promise perfect understanding, or capture silently. Capture authorization and consent to send screen content to the selected provider are separate. Screen contents and credentials must never be committed or included in diagnostic logs.
+This observes and advises; it does not control apps or promise perfect understanding. Protected content can be blank, small text can be unreadable, events between samples are missed, and feedback can lag a minute or more. Provider retention policies apply to uploaded content.
 
-## Implementation direction
+## Choose a connection
 
-Keep capture, image batching, provider connections, analysis coordination, notification delivery, and SwiftUI presentation separate. Use the smallest useful design: one bounded inference request at a time, bounded image retention, explicit cancellation, actionable failures, and secure credential storage. Prefer simple readable solutions and concise commits.
+**Codex · ChatGPT sign-in:** run the small [Codex companion](companion/README.md) on your own computer/server, reachable over HTTPS. Enter its URL and connection key in the app, tap Continue with ChatGPT, complete OpenAI's device-code sign-in, then check account/models. The companion runs official Codex app-server with images and temporary threads; ScreenSage shows the answers and thread IDs. It does not reuse coding-agent tokens or treat a subscription as an API key. Each analysis uses a fresh ephemeral thread plus bounded recent text context, not an ever-growing saved Codex conversation.
 
-Apple's current documentation describes ScreenCaptureKit on iOS 27 with full-display capture, the system sharing picker, and the `screen-capture` background mode. Verify these APIs against the installed SDK and a physical device. Ordinary background timers are not a substitute for an active authorized capture session.
+**Custom provider:** enter your OpenAI-compatible HTTPS base URL (including `/v1` if required), provider API key and vision model. Select Chat Completions or Responses. These direct calls use non-streaming responses; a streaming-only proxy needs adaptation. Plain HTTP and automatic redirects are intentionally unsupported in this demo. No provider URL or key is bundled.
 
-Codex sign-in is an integration requirement, not an assumption that a ChatGPT subscription is an arbitrary API key. Verify supported official authentication and vision input. If an authenticated user-controlled companion service is required, explain and implement the smallest supported approach; do not fake a native sign-in flow or use undocumented token extraction. Keep custom-provider mode independently usable.
+Both options offer **Test vision connection**, which sends only a generated blue image. Then enter a goal, agree to screen-content uploads, tap Start and approve the system picker. Pause ends system sharing; Start asks for approval again. Avoid sensitive apps while sharing.
 
-## Development and release
+## Install and verify
 
-The implementation thread should create a short architecture and implementation plan, build the demo, run meaningful tests, and publish its first tested release. Use GitHub Actions with an appropriate Xcode 27 SDK, or build on an authorized Mac and upload the IPA. Distinguish simulator checks from real cross-app capture, authentication, background delivery, and physical-device tests. Never claim an untested integration works.
+Download the unsigned IPA and SHA256SUMS from [GitHub Releases](https://github.com/NotRllyRn/screensage/releases). Verify with `shasum -a 256 -c SHA256SUMS`, then import the IPA into SideStore and sign with your own account. An unsigned IPA cannot install directly. **Free-account signing and full-display background capture on the target devices have not been verified.** See the [device checklist](docs/DEVICE-TESTS.md).
 
-The full user requests, acceptance criteria, references, and handoff are in [docs/BRIEF.md](docs/BRIEF.md). Engineering expectations are in [AGENTS.md](AGENTS.md).
+## Build and tests
 
-## References
+Requires macOS, Xcode 27.x and XcodeGen. Linux can run companion tests but cannot build iOS apps.
+
+```sh
+./scripts/mac-build.sh
+# Choose an available iOS 27 simulator:
+xcodebuild -project ScreenSage.xcodeproj -scheme ScreenSage \
+  -destination 'platform=iOS Simulator,name=iPhone 18 Pro' \
+  -derivedDataPath build/simulator CODE_SIGNING_ALLOWED=NO test
+```
+
+The script produces `build/ScreenSage-unsigned.ipa` and `build/SHA256SUMS`. ScreenCaptureKit is absent from the tested simulator SDK: simulator builds show an explicit unavailable message, while physical-device builds use the real framework. Tests use synthetic images and mocked protocol responses; they do not establish actual background capture or authenticated model quality.
+
+[GitHub Actions](.github/workflows/build.yml) runs companion tests and attempts a native build/test artifact on a runner with an iOS 27 SDK. It fails explicitly if that SDK is unavailable. The first release uses an authorized local Mac, with exact verification recorded in [docs/VERIFICATION.md](docs/VERIFICATION.md).
+
+See [architecture](docs/ARCHITECTURE.md), [original brief](docs/BRIEF.md), and [engineering expectations](AGENTS.md).
+
+## Official references
 
 - [Apple: Capturing screen content on iOS](https://developer.apple.com/documentation/screencapturekit/capturing-screen-content-on-ios)
-- [Apple: ScreenCaptureKit](https://developer.apple.com/documentation/screencapturekit)
-- [Apple: Background execution modes](https://developer.apple.com/documentation/xcode/configuring-background-execution-modes)
-- [OpenAI: Sign in with ChatGPT](https://developers.openai.com/siwc)
-- [OpenAI: Codex app-server authentication](https://learn.chatgpt.com/docs/app-server#auth-endpoints)
-
+- [Codex app-server: authentication, threads and images](https://learn.chatgpt.com/docs/app-server)
+- [Sign in with ChatGPT](https://developers.openai.com/siwc)
