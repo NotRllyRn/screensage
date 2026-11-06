@@ -158,7 +158,7 @@ class Bridge:
                         break
         except TimeoutError: self.login_status = "Sign-in expired"
         finally:
-            await self.login.__aexit__(); self.login = None
+            await self.login.__aexit__(); self.login = None; self.login_task = None
 
     async def handle(self, request):
         if not hmac.compare_digest(request.headers.get("Authorization", "").encode(), ("Bearer " + self.key).encode()):

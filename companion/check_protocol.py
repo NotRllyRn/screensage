@@ -1,10 +1,14 @@
-import asyncio, tempfile, json, sys
+import asyncio, tempfile, json, sys, base64, struct, zlib
 from pathlib import Path
 sys.path.insert(0,'companion')
 import server
 from aiohttp import web
 async def main():
  requests=[]
+ def chunk(kind, data):
+  return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data))
+ png = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', 1, 1, 8, 2, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(b'\x00\x00\x00\xff')) + chunk(b'IEND', b'')
+ image = 'data:image/png;base64,' + base64.b64encode(png).decode()
  async def handler(request):
   data=await request.json();requests.append(data)
   response={'id':'resp_test','object':'response','status':'completed','output':[{'id':'msg_test','type':'message','status':'completed','role':'assistant','content':[{'type':'output_text','text':'NOTE: synthetic','annotations':[]}]}],'usage':{'input_tokens':10,'output_tokens':5,'total_tokens':15}}
@@ -20,13 +24,16 @@ async def main():
    home=Path(folder);(home/'empty').mkdir()
    async with server.RPC(home) as rpc:
     t=await rpc.call('thread/start',{'model':'gpt-5.4','ephemeral':True,'sandbox':'read-only','approvalPolicy':'never'})
-    await rpc.call('turn/start',{'threadId':t['thread']['id'],'input':[{'type':'text','text':'Synthetic protocol check'}]})
+    await rpc.call('turn/start',{'threadId':t['thread']['id'],'input':[{'type':'text','text':'Synthetic protocol check'},{'type':'image','url':image}]})
     async with asyncio.timeout(30):
      while True:
       e=await rpc.events.get()
-      if e['method']=='turn/completed':print('Native Codex mock turn:',e['params']['turn']['status']);break
+      if e['method']=='turn/completed':
+       assert e['params']['turn']['status'] == 'completed'
+       print('Native Codex mock turn: completed');break
     assert requests[0].get('tools', []) == [], 'Unexpected model-facing tools'
-    print('Verified: no model-facing tools')
+    assert any(c.get('type') == 'input_image' for item in requests[0]['input'] for c in item.get('content', []) if isinstance(c, dict)), 'Image missing from model request'
+    print('Verified: image input and no model-facing tools')
     print('Requests:',len(requests))
  finally:await runner.cleanup()
 asyncio.run(main())

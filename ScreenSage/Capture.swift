@@ -62,11 +62,12 @@ final class Capture: NSObject, SCContentSharingPickerObserver, SCStreamDelegate,
     nonisolated func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
         MainActor.assumeIsolated {
             guard accepting, self.stream === stream, type == .screen, sampleBuffer.isValid,
-                  Date().timeIntervalSince(lastFrame) >= 9.9,
+                  Date().timeIntervalSince(lastFrame) >= 10,
                   let buffer = sampleBuffer.imageBuffer else { return }
-            if let attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, createIfNecessary: false) as? [[SCStreamFrameInfo: Any]],
-               let status = attachments.first?[.status] as? Int, status != SCFrameStatus.complete.rawValue { return }
-            let source = CIImage(cvPixelBuffer: buffer)
+            let metadata = (CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, createIfNecessary: false) as? [[SCStreamFrameInfo: Any]])?.first
+            if let status = metadata?[.status] as? Int, status != SCFrameStatus.complete.rawValue { return }
+            let orientation = (metadata?[.videoOrientation] as? NSNumber)?.int32Value ?? 1
+            let source = CIImage(cvPixelBuffer: buffer).oriented(forExifOrientation: orientation)
             let scale = min(1, 1200 / max(source.extent.width, source.extent.height))
             let resized = source.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
             guard let cg = context.createCGImage(resized, from: resized.extent) else { return }

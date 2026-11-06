@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from aiohttp.test_utils import TestClient, TestServer
-from server import analyze, validate_analysis, make_app, config_args
+from server import analyze, validate_analysis, make_app, config_args, Bridge
 
 IMAGE = 'data:image/jpeg;base64,' + base64.b64encode(b'\xff\xd8\xfftest').decode()
 DATA = {'model': 'vision', 'prompt': 'Synthetic test', 'image': IMAGE}
@@ -42,6 +42,21 @@ class Tests(unittest.IsolatedAsyncioTestCase):
         task.cancel()
         with self.assertRaises(asyncio.CancelledError): await task
         self.assertEqual(rpc.calls[-1][0], 'turn/interrupt')
+    async def test_login_completion_releases_process_and_pending_task(self):
+        class Login:
+            events = asyncio.Queue()
+            closed = False
+            async def __aexit__(self): self.closed = True
+        login = Login()
+        login.events.put_nowait({'method': 'account/login/completed', 'params': {'success': True}})
+        bridge = Bridge(Path('/unused'), 'synthetic-key')
+        bridge.login = login
+        bridge.login_task = object()
+        await bridge.finish_login()
+        self.assertTrue(login.closed)
+        self.assertIsNone(bridge.login)
+        self.assertIsNone(bridge.login_task)
+        self.assertEqual(bridge.login_status, 'Signed in')
     async def test_http_auth_and_origin_rejected(self):
         with tempfile.TemporaryDirectory() as folder:
             client = TestClient(TestServer(make_app(Path(folder), 'x' * 32)))
