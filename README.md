@@ -2,7 +2,7 @@
 
 A native iPhone/iPad screen-context assistant for iOS/iPadOS 27. Explicitly start full-screen sharing, work in another app, and ask your chosen vision model about recent activity.
 
-**Current demo:** [v0.1.1](https://github.com/NotRllyRn/screensage/releases/tag/v0.1.1), built and unit-tested. Physical background capture, SideStore provisioning and authenticated provider responses are still unverified.
+**Current demo:** [v0.1.2](https://github.com/NotRllyRn/screensage/releases/tag/v0.1.2), built and unit-tested. Physical background capture, SideStore provisioning and authenticated provider responses are still unverified.
 
 ## What it does
 
@@ -24,6 +24,14 @@ This observes and advises; it does not control apps or promise perfect understan
 Tap **Context: Default** to edit the default monitoring instructions or create named presets such as Studying. Describe what you are doing, what to watch for, when to interrupt, and the correction you want. Alert notifications show a short reason; tapping opens evidence, explanation and suggested action. Excerpts can reveal task details on the lock screen; iOS notification-preview settings control visibility.
 
 Both options offer **Test vision connection**, which sends only a generated blue image. Then enter a goal, agree to screen-content uploads, tap Start and approve the system picker. Pause ends system sharing; Start asks for approval again. Avoid sensitive apps while sharing.
+
+## Diagnostics
+
+Tap **Diagnostics** at the top left → **Prepare diagnostics** → **Share diagnostics text file**. Reproduce the issue first so the recent events are included. You can send the exported `.txt` file with a bug report.
+
+The local rotating log keeps up to 1,000 events across launches, starting in version 0.1.2. It records app/OS version, lifecycle, frame counts/dimensions, request sizes and duration, HTTP status, streaming event counts, completion/parsing results, numeric errors and notification status. It excludes screenshots, keys, URLs, account details, prompts, preset names and model answers. Clear history from the same screen. These operational logs do not replace OS crash reports or reveal events from older app versions.
+
+Responses text is assembled from deltas and completed items, with no duplicate text; successful completion is required before feedback. Codex Broker's leading usage notice is excluded from the answer so `ALERT:` classification works.
 
 ## Install and verify
 

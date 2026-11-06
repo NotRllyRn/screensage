@@ -9,6 +9,8 @@ struct ContentView: View {
     @ObservedObject var session: Session
     @State private var settings = false
     @State private var contexts = false
+    @State private var diagnostics = false
+    @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         NavigationStack {
             Form {
@@ -64,11 +66,16 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("ScreenSage")
-            .toolbar { Button("Connection", systemImage: "network") { settings = true }.disabled(session.active || session.busy || session.transitioning) }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) { Button("Diagnostics", systemImage: "stethoscope") { diagnostics = true } }
+                ToolbarItem(placement: .topBarTrailing) { Button("Connection", systemImage: "network") { settings = true }.disabled(session.active || session.busy || session.transitioning) }
+            }
+            .sheet(isPresented: $diagnostics) { DiagnosticsView(session: session) }
             .sheet(isPresented: $settings) { ConnectionView(session: session) }
             .sheet(isPresented: $contexts) { PresetsView(session: session) }
             .sheet(item: $session.selectedFeedback) { FeedbackDetail(feedback: $0) }
         }
+        .onChange(of: scenePhase) { _, phase in Diagnostics.shared.record("app.scene", ["active": phase == .active ? 1 : 0, "background": phase == .background ? 1 : 0]) }
         .onChange(of: session.connection.address) { _, _ in session.consent = false }
         .onChange(of: session.connection.kind) { _, _ in session.consent = false }
     }

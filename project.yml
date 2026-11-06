@@ -7,8 +7,8 @@ settings:
     SWIFT_VERSION: '5.0'
     TARGETED_DEVICE_FAMILY: '1,2'
     CODE_SIGNING_ALLOWED: NO
-    MARKETING_VERSION: 0.1.1
-    CURRENT_PROJECT_VERSION: 2
+    MARKETING_VERSION: 0.1.2
+    CURRENT_PROJECT_VERSION: 3
 targets:
   ScreenSage:
     type: application
@@ -20,7 +20,7 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: ScreenSage/Info.plist
     scheme:
-      testTargets: [ScreenSageTests]
+      testTargets: [ScreenSageTests, ScreenSageUITests]
   ScreenSageTests:
     type: bundle.unit-test
     platform: iOS
@@ -31,3 +31,14 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.notrllyrn.screensage.tests
         GENERATE_INFOPLIST_FILE: YES
+  ScreenSageUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: ScreenSage
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.notrllyrn.screensage.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: ScreenSage

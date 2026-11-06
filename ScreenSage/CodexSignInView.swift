@@ -19,6 +19,7 @@ struct CodexSignInView: View {
         }.onDisappear { work?.cancel() }
     }
     private func perform(_ path: String) {
+        Diagnostics.shared.record("companion.action", ["login": path == "login/start" ? 1 : 0, "account": path == "account" ? 1 : 0, "logout": path == "logout" ? 1 : 0])
         busy = true
         work = Task { @MainActor in
             defer { busy = false }
@@ -30,6 +31,7 @@ struct CodexSignInView: View {
                 let session = URLSession(configuration: config, delegate: NoRedirect(), delegateQueue: nil)
                 defer { session.invalidateAndCancel() }
                 let (bytes, response) = try await session.bytes(for: request)
+                Diagnostics.shared.record("companion.http", ["status": (response as? HTTPURLResponse)?.statusCode ?? 0])
                 guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw AppError.message("Companion request failed. Check URL/key and companion status.") }
                 var data = Data()
                 for try await byte in bytes {
@@ -49,7 +51,8 @@ struct CodexSignInView: View {
                     if let models = result["models"] as? [String], !models.isEmpty { status += "\nAvailable vision models: " + models.joined(separator: ", ") }
                     if path == "logout" || result["signedIn"] as? Bool == true { code = ""; signInURL = nil }
                 }
-            } catch { if !Task.isCancelled { status = error.localizedDescription } }
+                Diagnostics.shared.record("companion.action_complete")
+            } catch { Diagnostics.shared.error("companion.error", error); if !Task.isCancelled { status = error.localizedDescription } }
         }
     }
 }

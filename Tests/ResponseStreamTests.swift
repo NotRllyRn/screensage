@@ -41,4 +41,53 @@ final class ResponseStreamTests: XCTestCase {
         XCTAssertFalse(message.contains("test-secret"))
         XCTAssertTrue(message.contains("HTTP 400"))
     }
+    func decode(_ events: [[String: Any]]) throws -> String {
+        var stream = ResponseStream()
+        for event in events {
+            let json = String(data: try JSONSerialization.data(withJSONObject: event), encoding: .utf8)!
+            try feed("data: " + json + "\n\n", to: &stream)
+        }
+        var connection = Connection(); connection.wire = .responses
+        return try Provider.parse(stream.finish(), connection: connection)
+    }
+    var emptyCompletion: [String: Any] { ["type": "response.completed", "response": ["status": "completed", "output": []]] }
+    func testDeltaAnswerSurvivesEmptyCompletionForAllRequestKinds() throws {
+        for answer in ["Blue", "NOTE: Six frames reviewed", "Answer to your question"] {
+            XCTAssertEqual(try decode([
+                ["type": "response.output_text.delta", "output_index": 0, "content_index": 0, "delta": answer], emptyCompletion
+            ]), answer)
+        }
+    }
+    func testDoneEventsReplaceDeltasWithoutDuplicatingText() throws {
+        XCTAssertEqual(try decode([
+            ["type": "response.output_text.delta", "delta": "Bl"],
+            ["type": "response.output_text.delta", "delta": "ue"],
+            ["type": "response.output_text.done", "text": "Blue"],
+            ["type": "response.content_part.done", "part": ["type": "output_text", "text": "Blue"]],
+            ["type": "response.output_item.done", "item": ["type": "message", "content": [["type": "output_text", "text": "Blue"]]]],
+            emptyCompletion
+        ]), "Blue")
+    }
+    func testItemOnlyAnswerAndCommentaryFiltering() throws {
+        XCTAssertEqual(try decode([
+            ["type": "response.output_item.done", "output_index": 0, "item": ["type": "message", "phase": "commentary", "content": [["type": "output_text", "text": "Working…"]]]],
+            ["type": "response.output_item.done", "output_index": 1, "item": ["type": "message", "phase": "final_answer", "content": [["type": "output_text", "text": "Blue"]]]],
+            emptyCompletion
+        ]), "Blue")
+    }
+    func testIndexedPartsStayOrderedAndBrokerNoticeDoesNotHideAlerts() throws {
+        XCTAssertEqual(try decode([
+            ["type": "response.output_text.done", "output_index": 0, "content_index": 1, "text": "Why: check dimensions."],
+            ["type": "response.output_text.done", "output_index": 0, "content_index": 0, "text": "🔨 Example usage notice\n\nALERT: Missing units"],
+            emptyCompletion
+        ]), "ALERT: Missing units\nWhy: check dimensions.")
+    }
+    func testDeltasCannotBecomeAnAnswerWithoutSuccessfulCompletion() throws {
+        var stream = ResponseStream()
+        try feed("data: {\"type\":\"response.output_text.delta\",\"delta\":\"Blue\"}\n\n", to: &stream)
+        XCTAssertThrowsError(try stream.finish())
+        XCTAssertThrowsError(try feed("data: {\"type\":\"response.failed\"}\n\n", to: &stream))
+        XCTAssertEqual(stream.diagnosticCounts["terminal_status"], 2)
+    }
+
 }
